@@ -25,11 +25,11 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/consensus/misc/eip1559"
+	"github.com/drinkcoffee/l2geth/core/types"
+	"github.com/drinkcoffee/l2geth/log"
+	"github.com/drinkcoffee/l2geth/rpc"
 	"golang.org/x/exp/slices"
 )
 

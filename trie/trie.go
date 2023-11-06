@@ -22,10 +22,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie/trienode"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/core/types"
+	"github.com/drinkcoffee/l2geth/log"
+	"github.com/drinkcoffee/l2geth/trie/trienode"
 )
 
 // Trie is a Merkle Patricia Trie. Use New to create a trie that sits on

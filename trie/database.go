@@ -19,13 +19,13 @@ package trie
 import (
 	"errors"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie/triedb/hashdb"
-	"github.com/ethereum/go-ethereum/trie/triedb/pathdb"
-	"github.com/ethereum/go-ethereum/trie/trienode"
-	"github.com/ethereum/go-ethereum/trie/triestate"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/ethdb"
+	"github.com/drinkcoffee/l2geth/log"
+	"github.com/drinkcoffee/l2geth/trie/triedb/hashdb"
+	"github.com/drinkcoffee/l2geth/trie/triedb/pathdb"
+	"github.com/drinkcoffee/l2geth/trie/trienode"
+	"github.com/drinkcoffee/l2geth/trie/triestate"
 )
 
 // Config defines all necessary options for database.

@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/light"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/core/rawdb"
+	"github.com/drinkcoffee/l2geth/core/types"
+	"github.com/drinkcoffee/l2geth/crypto"
+	"github.com/drinkcoffee/l2geth/ethdb"
+	"github.com/drinkcoffee/l2geth/light"
 )
 
 var testBankSecureTrieKey = secAddr(bankAddr)

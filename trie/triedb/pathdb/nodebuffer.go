@@ -21,12 +21,12 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/fastcache"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie/trienode"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/core/rawdb"
+	"github.com/drinkcoffee/l2geth/crypto"
+	"github.com/drinkcoffee/l2geth/ethdb"
+	"github.com/drinkcoffee/l2geth/log"
+	"github.com/drinkcoffee/l2geth/trie/trienode"
 )
 
 // nodebuffer is a collection of modified trie nodes to aggregate the disk

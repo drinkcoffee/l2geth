@@ -24,17 +24,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/eth/tracers"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/tests"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/common/hexutil"
+	"github.com/drinkcoffee/l2geth/common/math"
+	"github.com/drinkcoffee/l2geth/core"
+	"github.com/drinkcoffee/l2geth/core/rawdb"
+	"github.com/drinkcoffee/l2geth/core/types"
+	"github.com/drinkcoffee/l2geth/core/vm"
+	"github.com/drinkcoffee/l2geth/eth/tracers"
+	"github.com/drinkcoffee/l2geth/params"
+	"github.com/drinkcoffee/l2geth/rlp"
+	"github.com/drinkcoffee/l2geth/tests"
 )
 
 type callContext struct {

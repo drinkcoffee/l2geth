@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/drinkcoffee/l2geth/ethdb"
 	"golang.org/x/exp/slices"
 )
 

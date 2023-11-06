@@ -22,10 +22,10 @@ import (
 	"net"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p/discover/v4wire"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
+	"github.com/drinkcoffee/l2geth/crypto"
+	"github.com/drinkcoffee/l2geth/p2p/discover/v4wire"
+	"github.com/drinkcoffee/l2geth/p2p/enode"
+	"github.com/drinkcoffee/l2geth/p2p/enr"
 	"golang.org/x/exp/slices"
 )
 

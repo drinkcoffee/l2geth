@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
+	"github.com/drinkcoffee/l2geth/common/mclock"
 )
 
 func TestUpdateTimer(t *testing.T) {
