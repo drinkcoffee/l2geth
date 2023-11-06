@@ -17,7 +17,7 @@
 package state
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/drinkcoffee/l2geth/common"
 )
 
 type accessList struct {

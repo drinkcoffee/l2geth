@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/drinkcoffee/l2geth/common"
 )
 
 // ErrCommitted is returned when a already committed trie is requested for usage.

@@ -21,10 +21,10 @@ import (
 	"crypto/sha256"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/crypto/kzg4844"
+	"github.com/drinkcoffee/l2geth/params"
+	"github.com/drinkcoffee/l2geth/rlp"
 	"github.com/holiman/uint256"
 )
 
