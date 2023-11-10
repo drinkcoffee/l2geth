@@ -525,6 +525,10 @@ func (s *stateObject) setNonce(nonce uint64) {
 	s.data.Nonce = nonce
 }
 
+func (s *stateObject) PoseidonCodeHash() []byte {
+	return s.data.CodeHash // TODO s.data.PoseidonCodeHash
+}
+
 func (s *stateObject) CodeHash() []byte {
 	return s.data.CodeHash
 }

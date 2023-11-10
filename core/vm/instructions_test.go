@@ -607,17 +607,17 @@ func TestOpTstore(t *testing.T) {
 	stack.push(new(uint256.Int))
 	opTstore(&pc, evmInterpreter, &scopeContext)
 	// there should be no elements on the stack after TSTORE
-	if stack.len() != 0 {
+	if stack.Len() != 0 {
 		t.Fatal("stack wrong size")
 	}
 	// push the location to the stack
 	stack.push(new(uint256.Int))
 	opTload(&pc, evmInterpreter, &scopeContext)
 	// there should be one element on the stack after TLOAD
-	if stack.len() != 1 {
+	if stack.Len() != 1 {
 		t.Fatal("stack wrong size")
 	}
-	val := stack.peek()
+	val := stack.Peek()
 	if !bytes.Equal(val.Bytes(), value) {
 		t.Fatal("incorrect element read from transient storage")
 	}

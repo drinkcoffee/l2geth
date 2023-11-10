@@ -17,6 +17,7 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -30,9 +31,16 @@ import (
 	"github.com/drinkcoffee/l2geth/common/math"
 	"github.com/drinkcoffee/l2geth/core/types"
 	"github.com/drinkcoffee/l2geth/core/vm"
+	"github.com/drinkcoffee/l2geth/crypto"
+	"github.com/drinkcoffee/l2geth/crypto/codehash"
+	"github.com/drinkcoffee/l2geth/log"
 	"github.com/drinkcoffee/l2geth/params"
 	"github.com/holiman/uint256"
 )
+
+// emptyKeccakCodeHash is used by create to ensure deployment is disallowed to already
+// deployed contract addresses (relevant after the account abstraction).
+var emptyKeccakCodeHash = codehash.EmptyKeccakCodeHash
 
 // Storage represents a contract's storage.
 type Storage map[common.Hash]common.Hash
@@ -67,14 +75,42 @@ type StructLog struct {
 	Op            vm.OpCode                   `json:"op"`
 	Gas           uint64                      `json:"gas"`
 	GasCost       uint64                      `json:"gasCost"`
-	Memory        []byte                      `json:"memory,omitempty"`
+	Memory        bytes.Buffer                `json:"memory"`
 	MemorySize    int                         `json:"memSize"`
 	Stack         []uint256.Int               `json:"stack"`
-	ReturnData    []byte                      `json:"returnData,omitempty"`
+	ReturnData    bytes.Buffer                `json:"returnData"`
 	Storage       map[common.Hash]common.Hash `json:"-"`
 	Depth         int                         `json:"depth"`
 	RefundCounter uint64                      `json:"refund"`
+	ExtraData     *types.ExtraData            `json:"extraData"`
 	Err           error                       `json:"-"`
+}
+
+func NewStructlog(pc uint64, op vm.OpCode, gas, cost uint64, depth int, err error) *StructLog {
+	return &StructLog{
+		Pc:      pc,
+		Op:      op,
+		Gas:     gas,
+		GasCost: cost,
+		Depth:   depth,
+		Err:     err,
+	}
+}
+
+func (s *StructLog) clean() {
+	s.Memory.Reset()
+	s.Stack = s.Stack[:0]
+	s.ReturnData.Reset()
+	s.Storage = nil
+	s.ExtraData = nil
+	s.Err = nil
+}
+
+func (s *StructLog) getOrInitExtraData() *types.ExtraData {
+	if s.ExtraData == nil {
+		s.ExtraData = &types.ExtraData{}
+	}
+	return s.ExtraData
 }
 
 // overrides for gencodec
@@ -109,8 +145,12 @@ type StructLogger struct {
 	cfg Config
 	env *vm.EVM
 
+	statesAffected map[common.Address]struct{}
 	storage  map[common.Address]Storage
-	logs     []StructLog
+	createdAccount *types.AccountWrapper
+
+	callStackLogInd []int
+	logs     []*StructLog
 	output   []byte
 	err      error
 	gasLimit uint64
@@ -124,6 +164,7 @@ type StructLogger struct {
 func NewStructLogger(cfg *Config) *StructLogger {
 	logger := &StructLogger{
 		storage: make(map[common.Address]Storage),
+		statesAffected: make(map[common.Address]struct{}),
 	}
 	if cfg != nil {
 		logger.cfg = *cfg
@@ -134,20 +175,36 @@ func NewStructLogger(cfg *Config) *StructLogger {
 // Reset clears the data held by the logger.
 func (l *StructLogger) Reset() {
 	l.storage = make(map[common.Address]Storage)
+	l.statesAffected = make(map[common.Address]struct{})
 	l.output = make([]byte, 0)
 	l.logs = l.logs[:0]
+	l.callStackLogInd = nil
 	l.err = nil
+	l.createdAccount = nil
 }
 
 // CaptureStart implements the EVMLogger interface to initialize the tracing operation.
-func (l *StructLogger) CaptureStart(env *vm.EVM, from common.Address, to common.Address, create bool, input []byte, gas uint64, value *big.Int) {
+func (l *StructLogger) CaptureStart(env *vm.EVM, from common.Address, to common.Address, isCreate bool, input []byte, gas uint64, value *big.Int) {
 	l.env = env
+
+	if isCreate {
+		// notice codeHash is set AFTER CreateTx has exited, so here codeHash is still empty
+		l.createdAccount = &types.AccountWrapper{
+			Address: to,
+			// nonce is 1 after EIP158, so we query it from stateDb
+			Nonce:   env.StateDB.GetNonce(to),
+			Balance: (*hexutil.Big)(value),
+		}
+	}
+
+	l.statesAffected[from] = struct{}{}
+	l.statesAffected[to] = struct{}{}
 }
 
 // CaptureState logs a new structured log message and pushes it out to the environment
 //
 // CaptureState also tracks SLOAD/SSTORE ops to track storage change.
-func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, rData []byte, depth int, err error) {
+func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, scope *vm.ScopeContext, rData []byte, depth int, opErr error) {
 	// If tracing was interrupted, set the error and stop
 	if l.interrupt.Load() {
 		return
@@ -160,11 +217,14 @@ func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, s
 	memory := scope.Memory
 	stack := scope.Stack
 	contract := scope.Contract
+	structLog := NewStructlog(pc, op, gas, cost, depth, opErr)
+
 	// Copy a snapshot of the current memory state to a new buffer
-	var mem []byte
+	var mem bytes.Buffer
 	if l.cfg.EnableMemory {
-		mem = make([]byte, len(memory.Data()))
-		copy(mem, memory.Data())
+		mem1 := make([]byte, len(memory.Data()))
+		copy(mem1, memory.Data())
+		mem = *bytes.NewBuffer(mem1)
 	}
 	// Copy a snapshot of the current stack state to a new buffer
 	var stck []uint256.Int
@@ -202,14 +262,56 @@ func (l *StructLogger) CaptureState(pc uint64, op vm.OpCode, gas, cost uint64, s
 			storage = l.storage[contract.Address()].Copy()
 		}
 	}
-	var rdata []byte
+	var rdata bytes.Buffer
 	if l.cfg.EnableReturnData {
-		rdata = make([]byte, len(rData))
-		copy(rdata, rData)
+		rdata1 := make([]byte, len(rData))
+		copy(rdata1, rData)
+		rdata = *bytes.NewBuffer(rdata1)
 	}
+
+	execFuncList, ok := OpcodeExecs[op]
+	if ok {
+		// execute trace func list.
+		for _, exec := range execFuncList {
+			if err := exec(l, scope, structLog.getOrInitExtraData()); err != nil {
+				log.Error("Failed to trace data", "opcode", op.String(), "err", err)
+			}
+		}
+	}
+	var extraData *types.ExtraData;
+	// for each "calling" op, pick the caller's state
+	switch op {
+	case vm.CALL, vm.CALLCODE, vm.STATICCALL, vm.DELEGATECALL, vm.CREATE, vm.CREATE2:
+		extraData = structLog.getOrInitExtraData()
+		extraData.Caller = append(extraData.Caller, getWrappedAccountForAddr(l, scope.Contract.Address()))
+	}
+
+	// in reality it is impossible for CREATE to trigger ErrContractAddressCollision
+	if op == vm.CREATE2 && opErr == nil {
+		_ = stack.Data()[stack.Len()-1] // value
+		offset := stack.Data()[stack.Len()-2]
+		size := stack.Data()[stack.Len()-3]
+		salt := stack.Data()[stack.Len()-4]
+		// `CaptureState` is called **before** memory resizing
+		// So sometimes we need to auto pad 0.
+		code := vm.GetData(scope.Memory.Data(), offset.Uint64(), size.Uint64())
+
+		codeAndHash := &vm.CodeAndHash{Code: code}
+
+		address := crypto.CreateAddress2(contract.Address(), salt.Bytes32(), codeAndHash.Hash().Bytes())
+
+		contractHash := l.env.StateDB.GetCodeHash(address)
+		if l.env.StateDB.GetNonce(address) != 0 || (contractHash != (common.Hash{}) && contractHash != emptyKeccakCodeHash) {
+			extraData = structLog.getOrInitExtraData()
+			wrappedStatus := getWrappedAccountForAddr(l, address)
+			extraData.StateList = append(extraData.StateList, wrappedStatus)
+			l.statesAffected[address] = struct{}{}
+		}
+	}
+
 	// create a new snapshot of the EVM.
-	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, rdata, storage, depth, l.env.StateDB.GetRefund(), err}
-	l.logs = append(l.logs, log)
+	log := StructLog{pc, op, gas, cost, mem, memory.Len(), stck, rdata, storage, depth, l.env.StateDB.GetRefund(), extraData, opErr}
+	l.logs = append(l.logs, &log)
 }
 
 // CaptureFault implements the EVMLogger interface to trace an execution fault
@@ -251,7 +353,7 @@ func (l *StructLogger) GetResult() (json.RawMessage, error) {
 		Gas:         l.usedGas,
 		Failed:      failed,
 		ReturnValue: returnVal,
-		StructLogs:  formatLogs(l.StructLogs()),
+		StructLogs:  FormatLogs(l.StructLogs()),
 	})
 }
 
@@ -269,8 +371,21 @@ func (l *StructLogger) CaptureTxEnd(restGas uint64) {
 	l.usedGas = l.gasLimit - restGas
 }
 
+// UpdatedAccounts is used to collect all "touched" accounts
+func (l *StructLogger) UpdatedAccounts() map[common.Address]struct{} {
+	return l.statesAffected
+}
+
+// UpdatedStorages is used to collect all "touched" storage slots
+func (l *StructLogger) UpdatedStorages() map[common.Address]Storage {
+	return l.storage
+}
+
+// CreatedAccount return the account data in case it is a create tx
+func (l *StructLogger) CreatedAccount() *types.AccountWrapper { return l.createdAccount }
+
 // StructLogs returns the captured log entries.
-func (l *StructLogger) StructLogs() []StructLog { return l.logs }
+func (l *StructLogger) StructLogs() []*StructLog { return l.logs }
 
 // Error returns the VM error captured by the trace.
 func (l *StructLogger) Error() error { return l.err }
@@ -279,7 +394,7 @@ func (l *StructLogger) Error() error { return l.err }
 func (l *StructLogger) Output() []byte { return l.output }
 
 // WriteTrace writes a formatted trace to the given writer
-func WriteTrace(writer io.Writer, logs []StructLog) {
+func WriteTrace(writer io.Writer, logs []*StructLog) {
 	for _, log := range logs {
 		fmt.Fprintf(writer, "%-16spc=%08d gas=%v cost=%v", log.Op, log.Pc, log.Gas, log.GasCost)
 		if log.Err != nil {
@@ -293,9 +408,9 @@ func WriteTrace(writer io.Writer, logs []StructLog) {
 				fmt.Fprintf(writer, "%08d  %s\n", len(log.Stack)-i-1, log.Stack[i].Hex())
 			}
 		}
-		if len(log.Memory) > 0 {
+		if log.Memory.Len() > 0 {
 			fmt.Fprintln(writer, "Memory:")
-			fmt.Fprint(writer, hex.Dump(log.Memory))
+			fmt.Fprint(writer, hex.Dump(log.Memory.Bytes()))
 		}
 		if len(log.Storage) > 0 {
 			fmt.Fprintln(writer, "Storage:")
@@ -303,9 +418,9 @@ func WriteTrace(writer io.Writer, logs []StructLog) {
 				fmt.Fprintf(writer, "%x: %x\n", h, item)
 			}
 		}
-		if len(log.ReturnData) > 0 {
+		if log.ReturnData.Len() > 0 {
 			fmt.Fprintln(writer, "ReturnData:")
-			fmt.Fprint(writer, hex.Dump(log.ReturnData))
+			fmt.Fprint(writer, hex.Dump(log.ReturnData.Bytes()))
 		}
 		fmt.Fprintln(writer)
 	}
@@ -405,7 +520,7 @@ type ExecutionResult struct {
 	Gas         uint64         `json:"gas"`
 	Failed      bool           `json:"failed"`
 	ReturnValue string         `json:"returnValue"`
-	StructLogs  []StructLogRes `json:"structLogs"`
+	StructLogs  []*types.StructLogRes `json:"structLogs"`
 }
 
 // StructLogRes stores a structured log emitted by the EVM while replaying a
@@ -425,42 +540,27 @@ type StructLogRes struct {
 }
 
 // formatLogs formats EVM returned structured logs for json output
-func formatLogs(logs []StructLog) []StructLogRes {
-	formatted := make([]StructLogRes, len(logs))
-	for index, trace := range logs {
-		formatted[index] = StructLogRes{
-			Pc:            trace.Pc,
-			Op:            trace.Op.String(),
-			Gas:           trace.Gas,
-			GasCost:       trace.GasCost,
-			Depth:         trace.Depth,
-			Error:         trace.ErrorString(),
-			RefundCounter: trace.RefundCounter,
+func FormatLogs(logs []*StructLog) []*types.StructLogRes {
+	formatted := make([]*types.StructLogRes, 0, len(logs))
+
+	for _, trace := range logs {
+		logRes := types.NewStructLogResBasic(trace.Pc, trace.Op.String(), trace.Gas, trace.GasCost, trace.Depth, trace.RefundCounter, trace.Err)
+		for _, stackValue := range trace.Stack {
+			logRes.Stack = append(logRes.Stack, stackValue.Hex())
 		}
-		if trace.Stack != nil {
-			stack := make([]string, len(trace.Stack))
-			for i, stackValue := range trace.Stack {
-				stack[i] = stackValue.Hex()
-			}
-			formatted[index].Stack = &stack
+		for i := 0; i+32 <= trace.Memory.Len(); i += 32 {
+			logRes.Memory = append(logRes.Memory, common.Bytes2Hex(trace.Memory.Bytes()[i:i+32]))
 		}
-		if trace.ReturnData != nil && len(trace.ReturnData) > 0 {
-			formatted[index].ReturnData = hexutil.Bytes(trace.ReturnData).String()
-		}
-		if trace.Memory != nil {
-			memory := make([]string, 0, (len(trace.Memory)+31)/32)
-			for i := 0; i+32 <= len(trace.Memory); i += 32 {
-				memory = append(memory, fmt.Sprintf("%x", trace.Memory[i:i+32]))
-			}
-			formatted[index].Memory = &memory
-		}
-		if trace.Storage != nil {
+		if len(trace.Storage) != 0 {
 			storage := make(map[string]string)
 			for i, storageValue := range trace.Storage {
-				storage[fmt.Sprintf("%x", i)] = fmt.Sprintf("%x", storageValue)
+				storage[i.Hex()] = storageValue.Hex()
 			}
-			formatted[index].Storage = &storage
+			logRes.Storage = storage
 		}
+		logRes.ExtraData = trace.ExtraData
+
+		formatted = append(formatted, logRes)
 	}
 	return formatted
 }

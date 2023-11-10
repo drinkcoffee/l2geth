@@ -347,6 +347,19 @@ func (ec *Client) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header)
 	return sub, nil
 }
 
+// GetBlockTraceByHash returns the BlockTrace given the block hash.
+func (ec *Client) GetBlockTraceByHash(ctx context.Context, blockHash common.Hash) (*types.BlockTrace, error) {
+	blockTrace := &types.BlockTrace{}
+	return blockTrace, ec.c.CallContext(ctx, &blockTrace, "l2trace_getBlockTraceByNumberOrHash", blockHash)
+}
+
+// GetBlockTraceByNumber returns the BlockTrace given the block number.
+func (ec *Client) GetBlockTraceByNumber(ctx context.Context, number *big.Int) (*types.BlockTrace, error) {
+	blockTrace := &types.BlockTrace{}
+	return blockTrace, ec.c.CallContext(ctx, &blockTrace, "l2trace_getBlockTraceByNumberOrHash", toBlockNumArg(number))
+}
+
+
 // State Access
 
 // NetworkID returns the network ID for this client.
