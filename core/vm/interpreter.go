@@ -180,7 +180,7 @@ func (in *EVMInterpreter) Run(contract *Contract, input []byte, readOnly bool) (
 		operation := in.table[op]
 		cost = operation.constantGas // For tracing
 		// Validate stack
-		if sLen := stack.len(); sLen < operation.minStack {
+		if sLen := stack.Len(); sLen < operation.minStack {
 			return nil, &ErrStackUnderflow{stackLen: sLen, required: operation.minStack}
 		} else if sLen > operation.maxStack {
 			return nil, &ErrStackOverflow{stackLen: sLen, limit: operation.maxStack}

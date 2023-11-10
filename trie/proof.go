@@ -33,7 +33,7 @@ import (
 // If the trie does not contain a value for key, the returned proof contains all
 // nodes of the longest existing prefix of the key (at least the root node), ending
 // with the node that proves the absence of the key.
-func (t *Trie) Prove(key []byte, proofDb ethdb.KeyValueWriter) error {
+func (t *Trie) Prove(key []byte, fromLevel uint, proofDb ethdb.KeyValueWriter) error {
 	// Short circuit if the trie is already committed and not usable.
 	if t.committed {
 		return ErrCommitted
@@ -107,8 +107,8 @@ func (t *Trie) Prove(key []byte, proofDb ethdb.KeyValueWriter) error {
 // If the trie does not contain a value for key, the returned proof contains all
 // nodes of the longest existing prefix of the key (at least the root node), ending
 // with the node that proves the absence of the key.
-func (t *StateTrie) Prove(key []byte, proofDb ethdb.KeyValueWriter) error {
-	return t.trie.Prove(key, proofDb)
+func (t *StateTrie) Prove(key []byte, fromLevel uint, proofDb ethdb.KeyValueWriter) error {
+	return t.trie.Prove(key, fromLevel, proofDb)
 }
 
 // VerifyProof checks merkle proofs. The given proof must contain the value for

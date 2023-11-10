@@ -253,7 +253,7 @@ func (dl *diskLayer) proveRange(ctx *generatorContext, trieId *trie.ID, prefix [
 	if origin == nil {
 		origin = common.Hash{}.Bytes()
 	}
-	if err := tr.Prove(origin, proof); err != nil {
+	if err := tr.Prove(origin, 0, proof); err != nil {
 		log.Debug("Failed to prove range", "kind", kind, "origin", origin, "err", err)
 		return &proofResult{
 			keys:     keys,
@@ -264,7 +264,7 @@ func (dl *diskLayer) proveRange(ctx *generatorContext, trieId *trie.ID, prefix [
 		}, nil
 	}
 	if len(keys) > 0 {
-		if err := tr.Prove(keys[len(keys)-1], proof); err != nil {
+		if err := tr.Prove(keys[len(keys)-1], 0, proof); err != nil {
 			log.Debug("Failed to prove range", "kind", kind, "last", keys[len(keys)-1], "err", err)
 			return &proofResult{
 				keys:     keys,

@@ -911,3 +911,21 @@ web3._extend({
 	],
 });
 `
+const L2Trace = `
+web3._extend({
+	property: 'l2trace',
+	methods: [
+		new web3._extend.Method({
+			name: 'getBlockTraceByNumber',
+			call: 'l2trace_getBlockTraceByNumberOrHash',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputBlockNumberFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'getBlockTraceByHash',
+			call: 'l2trace_getBlockTraceByNumberOrHash',
+			params: 1
+		}),
+	],
+});
+`

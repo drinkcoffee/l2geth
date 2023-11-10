@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/drinkcoffee/l2geth/common"
+	"github.com/drinkcoffee/l2geth/crypto/codehash"
 	"github.com/drinkcoffee/l2geth/rlp"
 )
 
@@ -33,6 +34,10 @@ type StateAccount struct {
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+
+	// TODO are these both needed? StateAccount Scroll extensions. TODO see below for copy and new
+	PoseidonCodeHash []byte
+	CodeSize         uint64
 }
 
 // NewEmptyStateAccount constructs an empty state account.
@@ -41,6 +46,7 @@ func NewEmptyStateAccount() *StateAccount {
 		Balance:  new(big.Int),
 		Root:     EmptyRootHash,
 		CodeHash: EmptyCodeHash.Bytes(),
+		PoseidonCodeHash: codehash.EmptyPoseidonCodeHash.Bytes(),
 	}
 }
 
@@ -55,6 +61,8 @@ func (acct *StateAccount) Copy() *StateAccount {
 		Balance:  balance,
 		Root:     acct.Root,
 		CodeHash: common.CopyBytes(acct.CodeHash),
+		PoseidonCodeHash: common.CopyBytes(acct.PoseidonCodeHash),
+		CodeSize: acct.CodeSize,
 	}
 }
 

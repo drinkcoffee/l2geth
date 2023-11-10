@@ -718,7 +718,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 				continue
 			}
 			var proof proofList
-			if err := storageTrie.Prove(crypto.Keccak256(key.Bytes()), &proof); err != nil {
+			if err := storageTrie.Prove(crypto.Keccak256(key.Bytes()), 0, &proof); err != nil {
 				return nil, err
 			}
 			value := (*hexutil.Big)(statedb.GetState(address, key).Big())
@@ -731,7 +731,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address common.Address, st
 		return nil, err
 	}
 	var accountProof proofList
-	if err := tr.Prove(crypto.Keccak256(address.Bytes()), &accountProof); err != nil {
+	if err := tr.Prove(crypto.Keccak256(address.Bytes()), 0, &accountProof); err != nil {
 		return nil, err
 	}
 	return &AccountResult{

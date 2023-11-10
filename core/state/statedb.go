@@ -47,6 +47,17 @@ type revision struct {
 	journalIndex int
 }
 
+type proofList [][]byte
+
+func (n *proofList) Put(key []byte, value []byte) error {
+	*n = append(*n, value)
+	return nil
+}
+
+func (n *proofList) Delete(key []byte) error {
+	panic("not supported")
+}
+
 // StateDB structs within the ethereum protocol are used to store anything
 // within the merkle trie. StateDBs take care of caching and storing
 // nested states. It's the general query interface to retrieve:
@@ -329,6 +340,14 @@ func (s *StateDB) GetCodeSize(addr common.Address) int {
 	return 0
 }
 
+func (s *StateDB) GetPoseidonCodeHash(addr common.Address) common.Hash {
+	stateObject := s.getStateObject(addr)
+	if stateObject == nil {
+		return common.Hash{}
+	}
+	return common.BytesToHash(stateObject.PoseidonCodeHash())
+}
+
 func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
@@ -345,6 +364,47 @@ func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	}
 	return common.Hash{}
 }
+
+//TODO start - what is needed?
+
+// GetProof returns the Merkle proof for a given account.
+func (s *StateDB) GetProof(addr common.Address) ([][]byte, error) {
+	// if s.IsZktrie() {
+	// 	addr_s, _ := zkt.ToSecureKeyBytes(addr.Bytes())
+	// 	return s.GetProofByHash(common.BytesToHash(addr_s.Bytes()))
+	// }
+	return s.GetProofByHash(crypto.Keccak256Hash(addr.Bytes()))
+}
+
+// GetProofByHash returns the Merkle proof for a given account.
+func (s *StateDB) GetProofByHash(addrHash common.Hash) ([][]byte, error) {
+	var proof proofList
+	err := s.trie.Prove(addrHash[:], 0, &proof)
+	return proof, err
+}
+
+// func (s *StateDB) GetLiveStateAccount(addr common.Address) *types.StateAccount {
+// 	obj, ok := s.stateObjects[addr]
+// 	if !ok {
+// 		return nil
+// 	}
+// 	return &obj.data
+// }
+
+func (s *StateDB) GetRootHash() common.Hash {
+	return s.trie.Hash()
+}
+
+// GetStorageProof returns the Merkle proof for given storage slot.
+// func (s *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
+// 	trie := s.StorageTrie(a)
+// 	if trie == nil {
+// 		return nil, errors.New("storage trie for requested address does not exist")
+// 	}
+// 	return s.GetSecureTrieProof(trie, key)
+// }
+//TODO end - what is needed?
+
 
 // GetCommittedState retrieves a value from the given account's committed storage trie.
 func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) common.Hash {

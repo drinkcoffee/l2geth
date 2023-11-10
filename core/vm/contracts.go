@@ -315,9 +315,9 @@ func modexpMultComplexity(x *big.Int) *big.Int {
 // RequiredGas returns the gas required to execute the pre-compiled contract.
 func (c *bigModExp) RequiredGas(input []byte) uint64 {
 	var (
-		baseLen = new(big.Int).SetBytes(getData(input, 0, 32))
-		expLen  = new(big.Int).SetBytes(getData(input, 32, 32))
-		modLen  = new(big.Int).SetBytes(getData(input, 64, 32))
+		baseLen = new(big.Int).SetBytes(GetData(input, 0, 32))
+		expLen  = new(big.Int).SetBytes(GetData(input, 32, 32))
+		modLen  = new(big.Int).SetBytes(GetData(input, 64, 32))
 	)
 	if len(input) > 96 {
 		input = input[96:]
@@ -330,9 +330,9 @@ func (c *bigModExp) RequiredGas(input []byte) uint64 {
 		expHead = new(big.Int)
 	} else {
 		if expLen.Cmp(big32) > 0 {
-			expHead = new(big.Int).SetBytes(getData(input, baseLen.Uint64(), 32))
+			expHead = new(big.Int).SetBytes(GetData(input, baseLen.Uint64(), 32))
 		} else {
-			expHead = new(big.Int).SetBytes(getData(input, baseLen.Uint64(), expLen.Uint64()))
+			expHead = new(big.Int).SetBytes(GetData(input, baseLen.Uint64(), expLen.Uint64()))
 		}
 	}
 	// Calculate the adjusted exponent length
@@ -385,9 +385,9 @@ func (c *bigModExp) RequiredGas(input []byte) uint64 {
 
 func (c *bigModExp) Run(input []byte) ([]byte, error) {
 	var (
-		baseLen = new(big.Int).SetBytes(getData(input, 0, 32)).Uint64()
-		expLen  = new(big.Int).SetBytes(getData(input, 32, 32)).Uint64()
-		modLen  = new(big.Int).SetBytes(getData(input, 64, 32)).Uint64()
+		baseLen = new(big.Int).SetBytes(GetData(input, 0, 32)).Uint64()
+		expLen  = new(big.Int).SetBytes(GetData(input, 32, 32)).Uint64()
+		modLen  = new(big.Int).SetBytes(GetData(input, 64, 32)).Uint64()
 	)
 	if len(input) > 96 {
 		input = input[96:]
@@ -400,9 +400,9 @@ func (c *bigModExp) Run(input []byte) ([]byte, error) {
 	}
 	// Retrieve the operands and execute the exponentiation
 	var (
-		base = new(big.Int).SetBytes(getData(input, 0, baseLen))
-		exp  = new(big.Int).SetBytes(getData(input, baseLen, expLen))
-		mod  = new(big.Int).SetBytes(getData(input, baseLen+expLen, modLen))
+		base = new(big.Int).SetBytes(GetData(input, 0, baseLen))
+		exp  = new(big.Int).SetBytes(GetData(input, baseLen, expLen))
+		mod  = new(big.Int).SetBytes(GetData(input, baseLen+expLen, modLen))
 		v    []byte
 	)
 	switch {
@@ -441,11 +441,11 @@ func newTwistPoint(blob []byte) (*bn256.G2, error) {
 // runBn256Add implements the Bn256Add precompile, referenced by both
 // Byzantium and Istanbul operations.
 func runBn256Add(input []byte) ([]byte, error) {
-	x, err := newCurvePoint(getData(input, 0, 64))
+	x, err := newCurvePoint(GetData(input, 0, 64))
 	if err != nil {
 		return nil, err
 	}
-	y, err := newCurvePoint(getData(input, 64, 64))
+	y, err := newCurvePoint(GetData(input, 64, 64))
 	if err != nil {
 		return nil, err
 	}
@@ -483,12 +483,12 @@ func (c *bn256AddByzantium) Run(input []byte) ([]byte, error) {
 // runBn256ScalarMul implements the Bn256ScalarMul precompile, referenced by
 // both Byzantium and Istanbul operations.
 func runBn256ScalarMul(input []byte) ([]byte, error) {
-	p, err := newCurvePoint(getData(input, 0, 64))
+	p, err := newCurvePoint(GetData(input, 0, 64))
 	if err != nil {
 		return nil, err
 	}
 	res := new(bn256.G1)
-	res.ScalarMult(p, new(big.Int).SetBytes(getData(input, 64, 32)))
+	res.ScalarMult(p, new(big.Int).SetBytes(GetData(input, 64, 32)))
 	return res.Marshal(), nil
 }
 
